@@ -1,0 +1,89 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: frapee-appset
+  namespace: frapee
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - list:
+        elements:
+          - name: nginx-ingress
+            source:
+              repoURL: https://kubernetes.github.io/ingress-nginx
+              chart: ingress-nginx
+              targetRevision: 4.12.1
+              helm:
+                parameters:
+                  - name: "controller.publishService.enabled"
+                    value: "true"
+            destination:
+              namespace: ingress-nginx
+              server: https://kubernetes.default.svc
+          - name: mariadb
+            source:
+              repoURL: https://github.com/yourusername/your-repo
+              path: charts/  # Path to directory containing the .tgz
+              targetRevision: main
+              helm:
+                parameters:
+                  - name: "auth.existingSecret"
+                    value: "mariadb-passwords"s
+                releaseName: mariadb
+
+            destination:
+              namespace: mariadb
+              server: https://kubernetes.default.svc
+          - name: cert-manager
+            source:
+              repoURL: https://charts.jetstack.io
+              chart: cert-manager
+              targetRevision: v1.17.1
+              helm:
+                parameters:
+                  - name: "installCRDs"
+                    value: "true"
+            destination:
+              namespace: cert-manager
+              server: https://kubernetes.default.svc
+          - name: sealed-secrets
+            source:
+              repoURL: https://bitnami-labs.github.io/sealed-secrets
+              chart: sealed-secrets
+              targetRevision: 2.17.1
+              helm: 
+                parameters:
+                  - name: "createCustomResource"
+                    value: "true"
+            destination:
+              namespace: sealed-secrets
+              server: https://kubernetes.default.svc
+  template:
+    metadata:
+      name: '{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: '{{.source.repoURL}}'
+        chart: '{{.source.chart}}'
+        targetRevision: '{{.source.targetRevision}}'
+      destination:
+        server: '{{.destination.server}}'
+        namespace: '{{.destination.namespace}}'
+      syncPolicy:
+        automated:  
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - Validate=true
+          - CreateNamespace=true
+templatePatch: |
+    spec:
+      source:
+        helm:
+          parameters: 
+            {{- range .source.helm.parameters }}
+            - name: "{{ .name }}"
+              value: "{{ .value }}"
+            {{- end }}
