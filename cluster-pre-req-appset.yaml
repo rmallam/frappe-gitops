@@ -23,15 +23,14 @@ spec:
               server: https://kubernetes.default.svc
           - name: mariadb
             source:
-              repoURL: https://github.com/yourusername/your-repo
-              path: charts/  # Path to directory containing the .tgz
-              targetRevision: main
+              repoURL: registry-1.docker.io/bitnamicharts
+              chart: mariadb
+              targetRevision: 20.4.2
               helm:
                 parameters:
                   - name: "auth.existingSecret"
-                    value: "mariadb-passwords"s
+                    value: "mariadb-passwords"
                 releaseName: mariadb
-
             destination:
               namespace: mariadb
               server: https://kubernetes.default.svc
