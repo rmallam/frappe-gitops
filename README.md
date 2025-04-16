@@ -2,7 +2,18 @@
 ### Deploy argocd
 
 helm repo add argo https://argoproj.github.io/argo-helm
-helm install argocd-demo argo/argo-cd
+helm install argocd argo/argo-cd
+kubectl patch configmap argocd-cm --type merge -p '
+data:
+  repositories: |
+    - type: helm
+      name: bitnami
+      enableOCI: true
+      url: oci://registry-1.docker.io/bitnamicharts
+'
+
+oc apply -f cluster-pre-req-appset.yaml
+
 
 ### setup ingress for argocd
 

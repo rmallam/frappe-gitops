@@ -21,16 +21,23 @@ spec:
             destination:
               namespace: ingress-nginx
               server: https://kubernetes.default.svc
-          - name: mariadb
+          - name: mariadb-crds
             source:
-              repoURL: registry-1.docker.io/bitnamicharts
-              chart: mariadb
-              targetRevision: 20.4.2
+              repoURL: https://helm.mariadb.com/mariadb-operator
+              chart: mariadb-operator-crds
+              targetRevision: 0.38.1
               helm:
-                parameters:
-                  - name: "auth.existingSecret"
-                    value: "mariadb-passwords"
-                releaseName: mariadb
+                releaseName: mariadb-operator-crds
+            destination:
+              namespace: mariadb
+              server: https://kubernetes.default.svc
+          - name: mariadb-operators
+            source:
+              repoURL: https://helm.mariadb.com/mariadb-operator
+              chart: mariadb-operator
+              targetRevision: 0.38.1
+              helm:
+                releaseName: mariadb-operator
             destination:
               namespace: mariadb
               server: https://kubernetes.default.svc
@@ -58,6 +65,36 @@ spec:
             destination:
               namespace: sealed-secrets
               server: https://kubernetes.default.svc
+          - name: openebs
+            source:
+              repoURL: https://openebs.github.io/charts
+              chart: openebs
+              targetRevision: 3.9.0
+              helm:
+                parameters:
+                  - name: "defaultStorageClass.enabled"
+                    value: "true"
+                  - name: "localprovisioner.enabled"
+                    value: "true"
+                  - name: "ndm.enabled"
+                    value: "true"
+            destination:
+              namespace: openebs
+              server: https://kubernetes.default.svc
+          - name: redis
+            source:
+              repoURL: registry-1.docker.io/bitnamicharts
+              chart: redis
+              targetRevision: 17.3.17
+              helm:
+                parameters:
+                  - name: "auth.enabled"
+                    value: "true"
+                  - name: "architecture"
+                    value: "standalone"
+            destination:
+              namespace: redis
+              server: https://kubernetes.default.svc
   template:
     metadata:
       name: '{{.name}}'
@@ -71,18 +108,17 @@ spec:
         server: '{{.destination.server}}'
         namespace: '{{.destination.namespace}}'
       syncPolicy:
-        automated:  
-          prune: true
-          selfHeal: true
         syncOptions:
           - Validate=true
           - CreateNamespace=true
-templatePatch: |
+  templatePatch: |
     spec:
       source:
         helm:
+          {{- if hasKey .source.helm "parameters" }}
           parameters: 
             {{- range .source.helm.parameters }}
             - name: "{{ .name }}"
               value: "{{ .value }}"
             {{- end }}
+          {{- end }}
