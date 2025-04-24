@@ -11,7 +11,7 @@ spec:
     path: frappe/erpnext
     helm:
       valueFiles:
-        - frappe/values-custom.yaml
+        -  values-custom.yaml
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: erpnext
