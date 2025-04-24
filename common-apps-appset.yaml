@@ -13,7 +13,7 @@ spec:
     metadata:
       name: '{{name}}'
     spec:
-      project: multiaz
+      project: default
       source:
         repoURL: https://github.com/rmallam/frappe-gitops.git
         targetRevision: main
