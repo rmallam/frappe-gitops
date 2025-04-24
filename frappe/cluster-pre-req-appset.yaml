@@ -1,149 +1,19 @@
 apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
+kind: Application
 metadata:
-  name: frapee-appset
+  name: frappe
   namespace: argocd
 spec:
-  goTemplate: true
-  goTemplateOptions: ["missingkey=error"]
-  generators:
-    - list:
-        elements:
-          - name: nginx-ingress
-            source:
-              repoURL: https://kubernetes.github.io/ingress-nginx
-              chart: ingress-nginx
-              targetRevision: 4.12.1
-              helm:
-                parameters:
-                  - name: "controller.publishService.enabled"
-                    value: "true"
-            destination:
-              namespace: ingress-nginx
-              server: https://kubernetes.default.svc
-          - name: mariadb-crds
-            source:
-              repoURL: https://helm.mariadb.com/mariadb-operator
-              chart: mariadb-operator-crds
-              targetRevision: 0.38.1
-              helm:
-                releaseName: mariadb-operator-crds
-            destination:
-              namespace: mariadb
-              server: https://kubernetes.default.svc
-          - name: mariadb-operators
-            source:
-              repoURL: https://helm.mariadb.com/mariadb-operator
-              chart: mariadb-operator
-              targetRevision: 0.38.1
-              helm:
-                releaseName: mariadb-operator
-            destination:
-              namespace: common-apps
-              server: https://kubernetes.default.svc
-          - name: cert-manager
-            source:
-              repoURL: https://charts.jetstack.io
-              chart: cert-manager
-              targetRevision: v1.17.1
-              helm:
-                parameters:
-                  - name: "installCRDs"
-                    value: "true"
-            destination:
-              namespace: cert-manager
-              server: https://kubernetes.default.svc
-          - name: sealed-secrets
-            source:
-              repoURL: https://bitnami-labs.github.io/sealed-secrets
-              chart: sealed-secrets
-              targetRevision: 2.17.1
-              helm: 
-                parameters:
-                  - name: "createCustomResource"
-                    value: "true"
-            destination:
-              namespace: sealed-secrets
-              server: https://kubernetes.default.svc
-          - name: openebs
-            source:
-              repoURL: https://openebs.github.io/charts
-              chart: openebs
-              targetRevision: 3.9.0
-              helm:
-                parameters:
-                  - name: "defaultStorageClass.enabled"
-                    value: "false"
-                  - name: "localprovisioner.enabled"
-                    value: "false"
-                  - name: nfs-provisioner.enabled
-                    value: "true"
-                  - name: "ndm.enabled"
-                    value: "false"
-            destination:
-              namespace: openebs
-              server: https://kubernetes.default.svc
-          - name: redis-queue
-            source:
-              repoURL: https://charts.bitnami.com/bitnami
-              chart: redis
-              targetRevision: 17.3.17
-              helm:
-                releaseName: redis-queue
-                parameters:
-                  - name: "auth.enabled"
-                    value: "false"
-                  - name: "architecture"
-                    value: "standalone"
-                  - name: "master.persistence.enabled"
-                    value: "false"
-            destination:
-              namespace: common-apps
-              server: https://kubernetes.default.svc
-          - name: redis-socketio
-            source:
-              repoURL: https://charts.bitnami.com/bitnami
-              chart: redis
-              targetRevision: 17.3.17
-              helm:
-                releaseName: redis-io
-                parameters:
-                  - name: "auth.enabled"
-                    value: "false"
-                  - name: "architecture"
-                    value: "standalone"
-                  - name: "master.persistence.enabled"
-                    value: "false"
-            destination:
-              namespace: common-apps
-              server: https://kubernetes.default.svc
-  template:
-    metadata:
-      name: '{{.name}}'
-    spec:
-      project: default
-      source:
-        repoURL: '{{.source.repoURL}}'
-        chart: '{{.source.chart}}'
-        targetRevision: '{{.source.targetRevision}}'
-      destination:
-        server: '{{.destination.server}}'
-        namespace: '{{.destination.namespace}}'
-      syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-        syncOptions:
-          - Validate=true
-          - CreateNamespace=true
-  templatePatch: |
-    spec:
-      source:
-        helm:
-          {{- if hasKey .source.helm "parameters" }}
-          parameters: 
-            {{- range .source.helm.parameters }}
-            - name: "{{ .name }}"
-              value: "{{ .value }}"
-            {{- end }}
-          {{- end }}
+  project: default
+  source:
+    repoURL: 'https://github.com/rmallam/frappe-gitops.git'
+    targetRevision: HEAD
+    path: frappe/erpnext
+    helm:
+      valueFiles:
+        - frappe/values-custom.yaml
+  destination:
+    server: 'https://kubernetes.default.svc'
+    namespace: erpnext
+  syncPolicy:
+    automated: {}
