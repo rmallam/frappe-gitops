@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: common-apps-appset
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - name: commmon-apps
+            namespace: common-apps
+  template:
+    metadata:
+      name: '{{name}}'
+    spec:
+      project: multiaz
+      source:
+        repoURL: https://github.com/rmallam/frappe-gitops.git
+        targetRevision: main
+        path: 'common-apps'  # Path to your Helm chart
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        syncOptions:
+          - Validate=true
+          - CreateNamespace=true

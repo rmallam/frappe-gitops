@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: frapee-appset
-  namespace: frapee
+  namespace: argocd
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -39,7 +39,7 @@ spec:
               helm:
                 releaseName: mariadb-operator
             destination:
-              namespace: mariadb
+              namespace: common-apps
               server: https://kubernetes.default.svc
           - name: cert-manager
             source:
@@ -73,27 +73,49 @@ spec:
               helm:
                 parameters:
                   - name: "defaultStorageClass.enabled"
-                    value: "true"
+                    value: "false"
                   - name: "localprovisioner.enabled"
+                    value: "false"
+                  - name: nfs-provisioner.enabled
                     value: "true"
                   - name: "ndm.enabled"
-                    value: "true"
+                    value: "false"
             destination:
               namespace: openebs
               server: https://kubernetes.default.svc
-          - name: redis
+          - name: redis-queue
             source:
-              repoURL: registry-1.docker.io/bitnamicharts
+              repoURL: https://charts.bitnami.com/bitnami
               chart: redis
               targetRevision: 17.3.17
               helm:
+                releaseName: redis-queue
                 parameters:
                   - name: "auth.enabled"
                     value: "true"
                   - name: "architecture"
                     value: "standalone"
+                  - name: "master.persistence.enabled"
+                    value: "false"
             destination:
-              namespace: redis
+              namespace: common-apps
+              server: https://kubernetes.default.svc
+          - name: redis-socketio
+            source:
+              repoURL: https://charts.bitnami.com/bitnami
+              chart: redis
+              targetRevision: 17.3.17
+              helm:
+                releaseName: redis-io
+                parameters:
+                  - name: "auth.enabled"
+                    value: "true"
+                  - name: "architecture"
+                    value: "standalone"
+                  - name: "master.persistence.enabled"
+                    value: "false"
+            destination:
+              namespace: common-apps
               server: https://kubernetes.default.svc
   template:
     metadata:
@@ -108,6 +130,9 @@ spec:
         server: '{{.destination.server}}'
         namespace: '{{.destination.namespace}}'
       syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
         syncOptions:
           - Validate=true
           - CreateNamespace=true

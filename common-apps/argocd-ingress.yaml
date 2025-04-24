@@ -2,10 +2,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: argocd-ingress
-  namespace: frapee
+  namespace: argocd
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
 spec:
   ingressClassName: nginx
   rules:
@@ -16,6 +17,10 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: argocd-demo-server
+            name: argocd-server
             port:
               number: 443
+  tls:
+  - hosts:
+    - argo.kube.themallams.com
+    secretName: argocd-tls

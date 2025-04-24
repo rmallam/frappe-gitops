@@ -1,0 +1,65 @@
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: MariaDB
+metadata:
+  name: common-db-instance
+  namespace: common-apps
+spec:
+  image: docker.io/mariadb:10.6.16
+  livenessProbe:
+    periodSeconds: 30
+    timeoutSeconds: 30
+  metrics:
+    exporter: {}
+    passwordSecretKeyRef:
+      generate: false
+      key: ""
+      name: ""
+    serviceMonitor: {}
+  myCnf: |
+    [mysqld]
+    character-set-client-handshake = FALSE
+    character-set-server = utf8mb4
+    collation-server = utf8mb4_unicode_ci
+    bind-address=0.0.0.0
+  myCnfConfigMapKeyRef:
+    key: my.cnf
+    name: common-db-instance-config
+  port: 3306
+  readinessProbe:
+    periodSeconds: 30
+    timeoutSeconds: 10
+  replicas: 1
+  replicasAllowEvenNumber: false
+  resources:
+    limits:
+      cpu: "0.5"
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 1Gi
+  rootEmptyPassword: false
+  rootPasswordSecretKeyRef:
+    generate: false
+    key: root-password
+    name: mariadb
+  serviceAccountName: common-db-instance
+  startupProbe:
+    failureThreshold: 10
+    periodSeconds: 15
+    timeoutSeconds: 15
+  storage:
+    ephemeral: false
+    resizeInUseVolumes: true
+    size: 1Gi
+    volumeClaimTemplate:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+    waitForVolumeResize: true
+  suspend: false
+  tls:
+    enabled: true
+  updateStrategy:
+    type: ReplicasFirstPrimaryLast

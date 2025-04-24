@@ -1,0 +1,15 @@
+ 
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    cas.openebs.io/config: |
+      - name: NSFServerType
+        value: "kernel"
+      - name: BackendStorageClass
+        value: "do-block-storage"
+    openebs.io/cas-type: nsfrwx
+  name: nfs-rwx-storage
+provisioner: openebs.io/nfsrwx
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
