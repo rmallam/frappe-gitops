@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: frappe
+  name: customer2
   namespace: argocd
 spec:
   project: default
@@ -11,9 +11,9 @@ spec:
     path: frappe/erpnext
     helm:
       valueFiles:
-        -  values-custom.yaml
+        -  values-customer2.yaml
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: erpnext
+    namespace: customer2
   syncPolicy:
     automated: {}
