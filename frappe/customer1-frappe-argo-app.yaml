@@ -17,3 +17,6 @@ spec:
     namespace: customer1
   syncPolicy:
     automated: {}
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
