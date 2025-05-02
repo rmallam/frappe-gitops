@@ -22,6 +22,15 @@ spec:
         server: https://kubernetes.default.svc
         namespace: '{{namespace}}'
       syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            maxDuration: 1m
+            factor: 2
         syncOptions:
           - Validate=true
           - CreateNamespace=true
