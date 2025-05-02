@@ -42,8 +42,21 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       
+      - name: Check if cluster already exists
+        id: check-cluster
+        run: |
+          echo "Checking if cluster 'rmk8s' already exists..."
+          if doctl kubernetes cluster get rmk8s &> /dev/null; then
+            echo "Cluster 'rmk8s' already exists."
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "CLUSTER_NAME=rmk8s" >> $GITHUB_ENV
+          else
+            echo "Cluster 'rmk8s' does not exist."
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+      
       - name: Create K8s cluster
-        if: steps.determine-action.outputs.action == 'create'
+        if: steps.determine-action.outputs.action == 'create' && steps.check-cluster.outputs.exists == 'false'
         run: |
           echo "Creating Digital Ocean Kubernetes cluster..."
           doctl k c c rmk8s \
@@ -56,7 +69,7 @@ jobs:
         uses: actions/checkout@v3
       
       - name: Wait for cluster to be ready
-        if: steps.determine-action.outputs.action == 'create'
+        if: steps.determine-action.outputs.action == 'create' && steps.check-cluster.outputs.exists == 'false'
         run: |
           echo "Waiting for the Digital Ocean Kubernetes cluster to be ready..."
           # Poll the cluster status until it's ready
