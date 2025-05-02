@@ -55,6 +55,22 @@ jobs:
         if: steps.determine-action.outputs.action == 'create'
         uses: actions/checkout@v3
       
+      - name: Wait for cluster to be ready
+        if: steps.determine-action.outputs.action == 'create'
+        run: |
+          echo "Waiting for the Digital Ocean Kubernetes cluster to be ready..."
+          # Poll the cluster status until it's ready
+          while true; do
+            STATUS=$(doctl kubernetes cluster get rmk8s --format Status --no-header)
+            echo "Current cluster status: $STATUS"
+            if [[ "$STATUS" == "running" ]]; then
+              echo "Cluster is now ready!"
+              break
+            fi
+            echo "Waiting for cluster to become ready..."
+            sleep 30
+          done
+      
       - name: Setup kubectl
         if: steps.determine-action.outputs.action == 'create'
         run: |
