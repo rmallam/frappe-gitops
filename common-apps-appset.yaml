@@ -17,7 +17,7 @@ spec:
       source:
         repoURL: https://github.com/rmallam/frappe-gitops.git
         targetRevision: main
-        path: 'common-apps'  # Path to your Helm chart
+        path: '{{name}}'  # Path to your Helm chart
       destination:
         server: https://kubernetes.default.svc
         namespace: '{{namespace}}'
