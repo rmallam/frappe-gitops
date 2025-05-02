@@ -49,8 +49,58 @@ jobs:
           doctl k c c rmk8s \
             --node-pool "name=example-pool;size=s-2vcpu-4gb;count=1;auto-scale=true;min-nodes=1;max-nodes=3"
           echo "Cluster created successfully!"
-          # Store the cluster ID or name for future reference
           echo "CLUSTER_NAME=rmk8s" >> $GITHUB_ENV
+
+      - name: Checkout repository
+        if: steps.determine-action.outputs.action == 'create'
+        uses: actions/checkout@v3
+      
+      - name: Setup kubectl
+        if: steps.determine-action.outputs.action == 'create'
+        run: |
+          doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}
+      
+      - name: Install ArgoCD using script
+        if: steps.determine-action.outputs.action == 'create'
+        run: |
+          chmod +x ./scripts/install-argo.sh
+          ./scripts/install-argo.sh
+          echo "ArgoCD installation completed via script"
+      
+      - name: Apply cluster prerequisites
+        if: steps.determine-action.outputs.action == 'create'
+        run: |
+          echo "Applying cluster prerequisites..."
+          kubectl apply -f cluster-pre-req-appset.yaml
+          echo "Cluster prerequisites applied"
+      
+      - name: Wait for operators to come up
+        if: steps.determine-action.outputs.action == 'create'
+        run: |
+          echo "Waiting for operators to come up (10 minutes)..."
+          
+          # Wait for any applications created by the appset to become healthy
+          # First, wait for the applications to be created
+          sleep 60
+          
+          # Check all applications status
+          kubectl get applications -n argocd
+          
+          # Wait for up to 10 minutes total with progress updates
+          for i in {1..10}; do
+            echo "Waiting for operators - $i minutes passed..."
+            sleep 60
+            kubectl get applications -n argocd
+          done
+          
+          echo "Cluster should be ready with all prerequisites installed"
+      
+      - name: Apply common-apps-appset
+        if: steps.determine-action.outputs.action == 'create'
+        run: |
+          echo "Applying common-apps ApplicationSet..."
+          kubectl apply -f common-apps-appset.yaml
+          echo "Common apps ApplicationSet applied"
       
       - name: Delete K8s cluster
         if: steps.determine-action.outputs.action == 'delete'
