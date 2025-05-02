@@ -54,19 +54,19 @@ if ! kubectl wait --for=condition=available --timeout=60s deployment/argocd-serv
 fi
 echo "Argo CD server is ready." 
 
-# create the cluster apps app set
+# # create the cluster apps app set
 
-if ! kubectl apply -f cluster-pre-req-appset.yaml; then
-    echo "Failed to create the clusterapps app set."
-    exit 1
-fi
-echo "Clusterapps app set created successfully."
+# if ! kubectl apply -f ../cluster-pre-req-appset.yaml; then
+#     echo "Failed to create the clusterapps app set."
+#     exit 1
+# fi
+# echo "Clusterapps app set created successfully."
 
-# Wait for the cluster apps app set to be ready by checking if all argo applications are created
-kubectl get applications -n argocd
-if ! kubectl wait --for=condition=available --timeout=60s applicationset/clusterapps -n argocd; then
-    echo "Cluster apps app set is not ready."
-    exit 1
-fi
-echo "Cluster apps app set is ready."
+# # Wait for the cluster apps app set to be ready by checking if all argo applications are created
+# kubectl get applications -n argocd
+# if ! kubectl wait --for=condition=available --timeout=60s applicationset/clusterapps -n argocd; then
+#     echo "Cluster apps app set is not ready."
+#     exit 1
+# fi
+# echo "Cluster apps app set is ready."
 
