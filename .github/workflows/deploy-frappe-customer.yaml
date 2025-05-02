@@ -1,0 +1,92 @@
+name: Deploy Frappe Customer Application
+
+on:
+  workflow_dispatch:
+    inputs:
+      customer:
+        description: 'Customer name to deploy (e.g. customer1, customer2)'
+        required: true
+        default: 'customer1'
+        type: string
+
+jobs:
+  deploy-frappe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      
+      - name: Check if cluster exists
+        id: check-cluster
+        run: |
+          echo "Checking if cluster 'rmk8s' exists..."
+          if doctl kubernetes cluster get rmk8s &> /dev/null; then
+            echo "Cluster 'rmk8s' exists."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Cluster 'rmk8s' does not exist."
+            echo "exists=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+      
+      - name: Setup kubectl
+        if: steps.check-cluster.outputs.exists == 'true'
+        run: |
+          doctl kubernetes cluster kubeconfig save rmk8s
+          kubectl get nodes
+      
+      - name: Create templated Argo application
+        run: |
+          echo "Creating templated Argo application for customer: ${{ github.event.inputs.customer }}"
+          mkdir -p ./tmp
+          cat ./frappe/${{ github.event.inputs.customer }}-frappe-argo-app.yaml > ./tmp/application.yaml || {
+            echo "Creating application from template for ${{ github.event.inputs.customer }}..."
+            sed "s/customer1/${{ github.event.inputs.customer }}/g" ./frappe/customer1-frappe-argo-app.yaml > ./tmp/application.yaml
+          }
+          cat ./tmp/application.yaml
+      
+      - name: Check if ArgoCD is installed
+        id: check-argocd
+        run: |
+          if kubectl get namespace argocd &> /dev/null; then
+            echo "ArgoCD namespace exists"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "ArgoCD namespace does not exist"
+            echo "exists=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+      
+      - name: Deploy Frappe customer application
+        if: steps.check-argocd.outputs.exists == 'true'
+        run: |
+          echo "Deploying Frappe application for customer: ${{ github.event.inputs.customer }}"
+          kubectl apply -f ./tmp/application.yaml
+          echo "Application deployment initiated"
+      
+      - name: Wait for application to sync
+        run: |
+          echo "Waiting for application to sync (up to 5 minutes)..."
+          for i in {1..10}; do
+            HEALTH=$(kubectl get application ${{ github.event.inputs.customer }} -n argocd -o jsonpath='{.status.health.status}' 2>/dev/null || echo "NotFound")
+            SYNC=$(kubectl get application ${{ github.event.inputs.customer }} -n argocd -o jsonpath='{.status.sync.status}' 2>/dev/null || echo "NotFound")
+            
+            echo "Application status - Health: $HEALTH, Sync: $SYNC"
+            
+            if [[ "$HEALTH" == "Healthy" && "$SYNC" == "Synced" ]]; then
+              echo "Application successfully deployed and healthy!"
+              break
+            fi
+            
+            if [ $i -eq 10 ]; then
+              echo "Timeout waiting for application to become healthy and synced."
+            fi
+            
+            echo "Waiting for application to become healthy and synced... (attempt $i/10)"
+            sleep 30
+          done
