@@ -20,3 +20,10 @@ spec:
     syncOptions:
       - Validate=true
       - CreateNamespace=true
+  ignoreDifferences:
+    - group: batch
+      kind: Job
+      jsonPointers:
+        - /status
+        - /metadata
+        - /spec
