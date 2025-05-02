@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: Frappe-pre-req-appset
+  name: frappe-pre-req-appset
   namespace: argocd
 spec:
   goTemplate: true
