@@ -1,0 +1,60 @@
+name: Digital Ocean K8s Cluster Lifecycle
+
+on:
+  schedule:
+    # Run at 7 AM UTC daily for creation (adjust timezone as needed)
+    - cron: '0 7 * * *'
+    # Run at 6 PM UTC daily for deletion (adjust timezone as needed)
+    - cron: '0 18 * * *'
+  # Allow manual triggering for testing
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform (create or delete)'
+        required: true
+        default: 'create'
+        type: choice
+        options:
+          - create
+          - delete
+
+jobs:
+  cluster-lifecycle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine action based on time
+        id: determine-action
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "action=${{ github.event.inputs.action }}" >> $GITHUB_OUTPUT
+          else
+            # Get current hour in UTC
+            HOUR=$(date -u +%H)
+            if [[ $HOUR -ge 7 && $HOUR -lt 18 ]]; then
+              echo "action=create" >> $GITHUB_OUTPUT
+            else
+              echo "action=delete" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+      
+      - name: Create K8s cluster
+        if: steps.determine-action.outputs.action == 'create'
+        run: |
+          echo "Creating Digital Ocean Kubernetes cluster..."
+          doctl k c c rmk8s \
+            --node-pool "name=example-pool;size=s-2vcpu-4gb;count=1;auto-scale=true;min-nodes=1;max-nodes=3"
+          echo "Cluster created successfully!"
+          # Store the cluster ID or name for future reference
+          echo "CLUSTER_NAME=rmk8s" >> $GITHUB_ENV
+      
+      - name: Delete K8s cluster
+        if: steps.determine-action.outputs.action == 'delete'
+        run: |
+          echo "Deleting Digital Ocean Kubernetes cluster..."
+          doctl k cluster delete rmk8s --force
+          echo "Cluster deleted successfully!"
