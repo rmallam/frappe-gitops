@@ -6,8 +6,12 @@ on:
       customer:
         description: 'Customer name to deploy (e.g. customer1, customer2)'
         required: true
-        default: 'customer1'
-        type: string
+        default: 'create'
+        type: choice
+        options:
+          - customer1
+          - customer2
+          - customer3
 
 jobs:
   deploy-frappe:
