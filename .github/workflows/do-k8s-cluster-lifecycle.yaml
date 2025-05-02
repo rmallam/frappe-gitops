@@ -1,11 +1,6 @@
 name: Digital Ocean K8s Cluster Lifecycle
 
 on:
-  schedule:
-    # Run at 7 AM UTC daily for creation (adjust timezone as needed)
-    - cron: '0 7 * * *'
-    # Run at 6 PM UTC daily for deletion (adjust timezone as needed)
-    - cron: '0 18 * * *'
   # Allow manual triggering for testing
   workflow_dispatch:
     inputs:
@@ -22,21 +17,6 @@ jobs:
   cluster-lifecycle:
     runs-on: ubuntu-latest
     steps:
-      - name: Determine action based on time
-        id: determine-action
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "action=${{ github.event.inputs.action }}" >> $GITHUB_OUTPUT
-          else
-            # Get current hour in UTC
-            HOUR=$(date -u +%H)
-            if [[ $HOUR -ge 7 && $HOUR -lt 18 ]]; then
-              echo "action=create" >> $GITHUB_OUTPUT
-            else
-              echo "action=delete" >> $GITHUB_OUTPUT
-            fi
-          fi
-
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
         with:
@@ -56,7 +36,7 @@ jobs:
           fi
       
       - name: Create K8s cluster
-        if: steps.determine-action.outputs.action == 'create' && steps.check-cluster.outputs.exists == 'false'
+        if: github.event.inputs.action == 'create' && steps.check-cluster.outputs.exists == 'false'
         run: |
           echo "Creating Digital Ocean Kubernetes cluster..."
           doctl k c c rmk8s \
@@ -65,11 +45,11 @@ jobs:
           echo "CLUSTER_NAME=rmk8s" >> $GITHUB_ENV
 
       - name: Checkout repository
-        if: steps.determine-action.outputs.action == 'create'
+        if: github.event.inputs.action == 'create'
         uses: actions/checkout@v3
       
       - name: Wait for cluster to be ready
-        if: steps.determine-action.outputs.action == 'create' && steps.check-cluster.outputs.exists == 'false'
+        if: github.event.inputs.action == 'create' && steps.check-cluster.outputs.exists == 'false'
         run: |
           echo "Waiting for the Digital Ocean Kubernetes cluster to be ready..."
           # Poll the cluster status until it's ready
@@ -85,26 +65,26 @@ jobs:
           done
       
       - name: Setup kubectl
-        if: steps.determine-action.outputs.action == 'create'
+        if: github.event.inputs.action == 'create'
         run: |
           doctl kubernetes cluster kubeconfig save ${{ env.CLUSTER_NAME }}
       
       - name: Install ArgoCD using script
-        if: steps.determine-action.outputs.action == 'create'
+        if: github.event.inputs.action == 'create'
         run: |
           chmod +x ./scripts/install-argo.sh
           ./scripts/install-argo.sh
           echo "ArgoCD installation completed via script"
       
       - name: Apply cluster prerequisites
-        if: steps.determine-action.outputs.action == 'create'
+        if: github.event.inputs.action == 'create'
         run: |
           echo "Applying cluster prerequisites..."
           kubectl apply -f cluster-pre-req-appset.yaml
           echo "Cluster prerequisites applied"
       
       - name: Wait for operators to come up
-        if: steps.determine-action.outputs.action == 'create'
+        if: github.event.inputs.action == 'create'
         run: |
           echo "Waiting for operators to come up (10 minutes)..."
           
@@ -125,14 +105,14 @@ jobs:
           echo "Cluster should be ready with all prerequisites installed"
       
       - name: Apply common-apps-appset
-        if: steps.determine-action.outputs.action == 'create'
+        if: github.event.inputs.action == 'create'
         run: |
           echo "Applying common-apps ApplicationSet..."
           kubectl apply -f common-apps-appset.yaml
           echo "Common apps ApplicationSet applied"
       
       - name: Delete K8s cluster
-        if: steps.determine-action.outputs.action == 'delete'
+        if: github.event.inputs.action == 'delete'
         run: |
           echo "Deleting Digital Ocean Kubernetes cluster..."
           doctl k cluster delete rmk8s --force
